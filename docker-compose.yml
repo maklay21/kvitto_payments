@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kvitto
+      POSTGRES_USER: kvitto
+      POSTGRES_PASSWORD: kvitto
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvitto -d kvitto"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: ${WEBHOOK_SECRET:-postgresql+psycopg://kvitto:kvitto@db:5432/kvitto}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-replace-with-a-long-random-secret}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
